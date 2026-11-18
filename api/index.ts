@@ -13,15 +13,15 @@ export default async function api(req: IncomingMessage, res: ServerResponse) {
       );
       if (!env.BETTER_AUTH_URL) throw new Error("Set BETTER_AUTH_URL.");
       return createApiHandler(await createAuth(env.BETTER_AUTH_URL, env));
-    })().catch((error: unknown) => {
+    })().catch((err: unknown) => {
       handler = undefined;
-      throw error;
+      throw err;
     });
     await (
       await handler
     )(req, res);
-  } catch {
-    console.error("Auth service request failed");
+  } catch (err) {
+    console.error("Auth service request failed", err);
     if (!res.headersSent)
       res.writeHead(503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     res.end(JSON.stringify({ code: "service_unavailable" }));

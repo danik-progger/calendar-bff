@@ -1,0 +1,36 @@
+name: BFF checks
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    env:
+      BFF_TEST_DATABASE_URL: postgres://calendar:ci-only@127.0.0.1:5432/calendar_bff_test
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.22"
+      - run: bun install --frozen-lockfile
+      - name: Check formatting
+        run: bun run format:check
+      - run: bun run lint
+      - run: bun run build
+      - name: Start disposable test database
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql postgresql-client
+          sudo systemctl start postgresql
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "CREATE ROLE calendar WITH LOGIN PASSWORD 'ci-only'"
+          sudo -u postgres createdb -O calendar calendar_bff_test
+      - run: bun run test

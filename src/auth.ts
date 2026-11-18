@@ -18,43 +18,12 @@ export async function createAuth(baseURL: string, env: Record<string, string>) {
     googleId,
     env.GOOGLE_IOS_CLIENT_ID?.trim(),
     env.GOOGLE_ANDROID_CLIENT_ID?.trim(),
+    env.GOOGLE_DESKTOP_CLIENT_ID?.trim(),
   ].filter((value): value is string => Boolean(value));
   if (googleClients.length && !googleId)
     throw new Error("Set GOOGLE_CLIENT_ID to the web client ID first.");
   if (!local && new URL(baseURL).protocol !== "https:")
     throw new Error("BETTER_AUTH_URL must use HTTPS.");
-
-  const workerURL = env.AUTH_WORKER_URL?.trim();
-  const workerSecret = env.AUTH_WORKER_SECRET?.trim();
-  if (workerURL && (!workerSecret || workerSecret.length < 32)) {
-    throw new Error(
-      "Set AUTH_WORKER_SECRET to at least 32 characters when enabling the auth worker.",
-    );
-  }
-  const emailEndpoint = workerURL ? new URL("/emails", workerURL) : undefined;
-  if (
-    emailEndpoint &&
-    emailEndpoint.protocol !== "https:" &&
-    (emailEndpoint.protocol !== "http:" ||
-      !["127.0.0.1", "localhost", "[::1]"].includes(emailEndpoint.hostname))
-  ) {
-    throw new Error("AUTH_WORKER_URL must use HTTPS or loopback HTTP.");
-  }
-
-  async function sendEmail(
-    type: "registration" | "recovery",
-    data: { user: { email: string }; url: string },
-  ) {
-    if (!emailEndpoint) return;
-    const response = await fetch(emailEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${workerSecret}` },
-      body: JSON.stringify({ type, email: data.user.email, url: data.url }),
-      redirect: "error",
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw new Error(`Auth email delivery failed (${type})`);
-  }
 
   const auth = betterAuth({
     baseURL,
@@ -78,17 +47,6 @@ export async function createAuth(baseURL: string, env: Record<string, string>) {
           env.VERCEL === "1" ? ["x-vercel-forwarded-for"] : ["x-calendar-client-ip"],
       },
     },
-    emailAndPassword: {
-      enabled: true,
-      revokeSessionsOnPasswordReset: true,
-      sendResetPassword: emailEndpoint ? async (data) => sendEmail("recovery", data) : undefined,
-    },
-    emailVerification: emailEndpoint
-      ? {
-          sendOnSignUp: true,
-          sendVerificationEmail: async (data) => sendEmail("registration", data),
-        }
-      : undefined,
   });
 
   return auth;

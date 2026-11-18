@@ -1,6 +1,6 @@
-import { environment } from "./environment";
+import { environment } from "./environment.js";
 import { getMigrations } from "better-auth/db/migration";
-import { createAuth } from "./auth";
+import { createAuth } from "./auth.js";
 
 const env = environment();
 const connection = env.DATABASE_URL_UNPOOLED || env.DATABASE_URL;

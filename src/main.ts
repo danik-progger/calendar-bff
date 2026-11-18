@@ -1,12 +1,12 @@
 import { createServer } from "node:http";
-import { createAuth } from "./auth";
-import { createApiHandler } from "./handler";
-import { environment } from "./environment";
+import { createAuth } from "./auth.js";
+import { createApiHandler } from "./handler.js";
+import { environment } from "./environment.js";
 
 const env = environment();
 const baseURL = env.BETTER_AUTH_URL || "http://127.0.0.1:5174";
 const auth = await createAuth(baseURL, env);
-const handler = createApiHandler(auth, env.CALENDAR_API_URL || "http://127.0.0.1:8080");
+const handler = createApiHandler(auth);
 const server = createServer(async (req, res) => {
   try {
     await handler(req, res);
